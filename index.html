@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FacePay</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+
+  <div class="bg-white rounded-xl shadow p-6">
+    <h2 class="text-2xl font-bold text-slate-800">Welcome to FacePay</h2>
+    <p class="text-slate-600 mt-2">Use your face to login or register. Send coins to friends securely.</p>
+    <div class="mt-4">
+      <button onclick="location.href='/register'" class="px-4 py-2 bg-sky-600 text-white rounded mr-2">Register</button>
+      <button onclick="startLogin()" class="px-4 py-2 bg-slate-700 text-white rounded">Login with Face</button>
+    </div>
+    <div id="msg" class="mt-4 text-sm text-red-500"></div>
+    <div id="preview" class="mt-4"></div>
+  </div>
+
+  <script>
+  async function startLogin(){
+    const msg = document.getElementById('msg'); msg.textContent='Requesting camera...';
+    try{
+      const video = document.createElement('video'); video.className='rounded shadow'; video.style.maxWidth='320px';
+      document.getElementById('preview').innerHTML=''; document.getElementById('preview').appendChild(video);
+      const stream = await navigator.mediaDevices.getUserMedia({video:true});
+      video.srcObject = stream; await video.play();
+      await new Promise(r=>setTimeout(r,700));
+      const canvas = document.createElement('canvas'); canvas.width=video.videoWidth||320; canvas.height=video.videoHeight||240;
+      const ctx = canvas.getContext('2d'); ctx.drawImage(video,0,0,canvas.width,canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg');
+      stream.getTracks().forEach(t=>t.stop());
+      msg.textContent='Logging in...';
+      const res = await fetch('/login_face',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_data:dataUrl})});
+      const text = await res.text(); let j;
+      try{ j = JSON.parse(text); } catch(e){ msg.textContent='Server error: '+text; return; }
+      if(j.success){ window.location='/dashboard'; } else { msg.textContent = j.error || 'Login failed'; }
+    } catch(e){ msg.textContent = 'Camera error: '+e.message; }
+  }
+  </script>
+
+</body>
+</html>
